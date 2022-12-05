@@ -1,74 +1,85 @@
 
 use std::fs;
 
-const TABLE_POW_2: [u16;9] = [1,2,4,8,16,32,64,128,256];
-
-fn to_bytes(d: u32) -> u128 {
-    return 2u128.pow(d);
-}
-
-fn into_bytes_representation(section: &str) -> u16 {
-    let mut b = 0;
-
-    for c in section.chars() {
-        if c == '.' {
-            continue;
+fn find_match2_char(s1: &str, s2: &str) -> char {
+    for c1 in s1.chars() {
+        for c2 in s2.chars() {
+            if c1 == c2 {
+                return c1;
+            }
         }
-        let digit = c as usize - '0' as usize;
-        b = b | TABLE_POW_2[digit - 1];
+    };
+
+    panic!("Something went wrong ...")
+}
+
+fn find_match3_char(s1: &str, s2: &str, s3: &str) -> char {
+    for c1 in s1.chars() {
+        for c2 in s2.chars() {
+            if c1 == c2 {
+                for c3 in s3.chars() {
+                    if c2 == c3 {
+                        return c3;
+                    }
+                }
+            }
+        }
     }
-
-    return b;
+    
+    panic!("Something went wrong ...")
 }
 
-fn one_section_contains_the_other(bytes1: u128, bytes2: u128) -> bool {
-    return (bytes1 & bytes2 == bytes1) || (bytes2 & bytes1 == bytes2);
-}
-
-fn does_sections_overlap(bytes1: u128, bytes2: u128) -> bool {
-    return (bytes1 & bytes2) != 0;
+fn score(c: char) -> u32 {
+    let n: u32 = u32::from(c);
+    if n > 96 {
+        return n - 96;
+    } else {
+        return 26 + (n - 64);
+    }
 }
 
 fn main() {
+    println!("Hello, world!");
+
     let contents = fs::read_to_string("./data/input_2")
         .expect("file not found");
 
     let lines = contents.lines();
 
+    let e1 = lines.clone().skip(0).step_by(3);
+    let e2 = lines.clone().skip(1).step_by(3);
+    let e3 = lines.clone().skip(2).step_by(3);
+
     let mut total = 0;
-    
-    for line in lines {
-        let index = line.find(',').unwrap();
-        let e1: &str = &line[..index];
-        let e2: &str = &line[index+1..];
 
-        let index = e1.find('-').unwrap();
-        let s1 = &e1[..index].parse::<u32>().unwrap();
-        let s2 = &e1[index+1..].parse::<u32>().unwrap();
+    for ((s1,s2),s3) in std::iter::zip(std::iter::zip(e1,e2), e3) {
 
-        let mut b1 = 0;
+        let c: char = find_match3_char(s1,s2,s3);
+        let n = score(c);
 
-        for s in *s1..(*s2+1) {
-            b1 = b1 | to_bytes(s - 1);
-        }
-
-        let index = e2.find('-').unwrap();
-        let s1 = &e2[..index].parse::<u32>().unwrap();
-        let s2 = &e2[index+1..].parse::<u32>().unwrap();
-
-        let mut b2 = 0;
-
-        for s in *s1..(*s2+1) {
-            b2 = b2 | to_bytes(s - 1);
-        }
-
-        //println!(">>> {:#011b}", b1);
-        //println!(">>> {:#011b}", b2);
-        
-        if does_sections_overlap(b1, b2) {
-            total += 1;
-        }
+        total += n;
     }
 
-    println!(">>>> {}", total);
+    println!(">>> {}", total);
+
+    /*
+    let mut total: u32 = 0;
+
+    for line in lines {
+        if line.eq("") {
+            continue;
+        }
+
+        let bagpack: (&str, &str) = line.split_at(line.len() / 2);
+        let pocket_1: &str = &bagpack.0;
+        let pocket_2: &str = &bagpack.1;
+
+        let c: char = find_match2_char(pocket_1, pocket_2);
+        let n: u32 = score(c);
+
+        total += n;
+    }
+
+    println!(">>> {}", total);
+*/
 }
