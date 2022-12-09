@@ -62,8 +62,8 @@ struct Command {
 
 struct Simulation {
     ropes: [Position;10],
-    head: Position,
-    tail: Position,
+    //head: Position,       // exo 1
+    //tail: Position,
     commands: Vec<Command>,
     visited: Vec<Position>,
 }
@@ -87,7 +87,7 @@ impl Simulation {
 
         (0..repeat).map(|_| -> () {
             self.ropes[0].move_from_direction(&command.direction);                      // move head
-            let slicing_ropes: &mut [Position] = &mut self.ropes[..];
+            let slicing_ropes: &mut [Position] = &mut self.ropes[..];                   // move ropes
             for i in 1..self.ropes.len() {
                 let previous_knot = self.ropes[i-1].clone();
                 let mut knot = &mut self.ropes[i];
@@ -120,8 +120,8 @@ impl FromStr for Simulation {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut simu = Simulation {
             ropes: [Position {x:0, y:0}; 10],
-            head: Position { x: 0, y: 0 },
-            tail: Position { x: 0, y: 0 },
+            //head: Position { x: 0, y: 0 },
+            //tail: Position { x: 0, y: 0 },
             commands: Vec::new(),
             visited: Vec::new(),
         };
