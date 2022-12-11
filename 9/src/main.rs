@@ -3,146 +3,94 @@ use std::fs;
 use std::str::FromStr;
 use std::num::ParseIntError;
 
-#[derive(Copy)]
-#[derive(Clone)]
-struct Position {
-    x: i32,
-    y: i32,
-}
-
-impl PartialEq for Position {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
-impl Position {
-    fn move_from_direction(&mut self, direction: &Direction) -> () {
-        match direction {
-            Direction::Left => self.x -= 1,
-            Direction::Right => self.x += 1,
-            Direction::Up => self.y += 1,
-            Direction::Down => self.y -= 1,
-        };
-    }
-
-    // adjacent Position
-    fn next_to(&self, other: &Position) -> bool {
-        (self.x - other.x).abs() <= 1 && (self.y - other.y).abs() <= 1 
-    }
-
-    fn move_toward(&mut self, other: &Position) -> () {
-        if self.next_to(other) {
-            return;             // no need to move
-        }
-
-        let dx = other.x - self.x;
-        let dy = other.y - self.y;
-
-        if dx.abs() > 0 {
-            self.x += if dx > 0 { 1 } else { -1 }
-        };
-        if dy.abs() > 0 {
-            self.y += if dy > 0 { 1 } else { -1 }
-        };
-    }
-}
-
-enum Direction {
-    Left,
-    Right,
-    Up,
-    Down,
+// parameter u8 is the number of cycle for each operation
+enum Operation {
+    Add(u8),
+    Noop(u8)
 }
 
 struct Command {
-    direction: Direction,
-    count: u8,
+    operation: Operation,   // what to do
+    count: i32,             // number that increments the register
 }
 
 struct Simulation {
-    ropes: [Position;10],
-    //head: Position,       // exo 1
-    //tail: Position,
+    timeline: Vec<i32>,     // keep state of the register along each cycle
     commands: Vec<Command>,
-    visited: Vec<Position>,
 }
 
 impl Simulation {
 
-    fn execute(&mut self) -> usize {
+    fn execute(&mut self) -> i32 {
+        self.timeline.push(1);
         let commands = std::mem::take(&mut self.commands);
        
         commands.iter().map(|command| -> () {
-            self.do_move(&command);
-        }).collect::<()>();
+            self.execute_command(&command);
+        }).for_each(drop);
 
         self.commands = commands;
 
-        self.visited.len()
+        // print the value of the register after each cycle
+        //self.timeline.iter().enumerate().map(|(i,r)| -> () {
+        //    println!(">>> cycle({}) => {}", i+1, r)
+        //}).for_each(drop);
+        
+        let result = [20,60,100,140,180,220].iter().map(|i| -> i32 {
+            let cycle = *i as i32;
+            let register = self.timeline[i-1];
+
+            register * cycle
+        }).sum::<i32>();
+
+        //if let Some(register) = self.timeline.last() { *register } else { 0 }
+        result
     }
 
-    fn do_move(&mut self, command: &Command) -> () {
-        let repeat = command.count;
-
-        (0..repeat).map(|_| -> () {
-            self.ropes[0].move_from_direction(&command.direction);                      // move head
-            let slicing_ropes: &mut [Position] = &mut self.ropes[..];                   // move ropes
-            for i in 1..self.ropes.len() {
-                let previous_knot = self.ropes[i-1].clone();
-                let mut knot = &mut self.ropes[i];
-                knot.move_toward(&previous_knot);
-            }
-            if !self.visited.contains(&self.ropes[9]) {
-                self.visited.push(self.ropes[9].clone());                               // record visited Position
-            };
-        }).collect::<()>();
+    fn execute_command(&mut self, command: &Command) -> () {
+        match command.operation {
+            Operation::Add(n) => self.build_timeline(n, command.count),
+            Operation::Noop(n) => self.build_timeline(n, command.count),
+        };
     }
-    
-    /*  do_move version from exo 1
-    fn do_move(&mut self, command: &Command) -> () {
-        let repeat = command.count;
 
-        (0..repeat).map(|_| -> () {
-            self.head.move_from_direction(&command.direction);                      // move head
-            self.tail.move_toward(&self.head);                                      // move tail
-            if !self.visited.contains(&self.tail) {
-                self.visited.push(self.tail.clone());                               // record visited Position
-            };
-        }).collect::<()>();
+    fn build_timeline(&mut self, number_of_cycles: u8, increment: i32) {
+        let register: i32 = *(self.timeline.last().unwrap());
+
+        (0..number_of_cycles).map(|_| -> () {
+            self.timeline.push(register);
+        }).for_each(drop);
+
+        // increment the register after the last cycle
+        if let Some(r) = self.timeline.last_mut() {
+            *r += increment;
+        }
     }
-    */
 }
 
 impl FromStr for Simulation {
     type Err = ParseIntError;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut simu = Simulation {
-            ropes: [Position {x:0, y:0}; 10],
-            //head: Position { x: 0, y: 0 },
-            //tail: Position { x: 0, y: 0 },
+            timeline: Vec::new(),
             commands: Vec::new(),
-            visited: Vec::new(),
         };
 
         simu.commands = s.lines().map(|line| -> Command {
             let mut split = line.split_whitespace();
 
-            let direction_name = split.next().unwrap();
-            let n = split.next().unwrap().parse::<u8>().unwrap();
+            let operation_name = split.next().unwrap();
+            let n = split.next().unwrap_or("0").parse::<i32>().unwrap();
 
-            let direction = match direction_name {
-                "L" => Direction::Left,
-                "R" => Direction::Right,
-                "U" => Direction::Up,
-                "D" => Direction::Down,
-                 _ => Direction::Left
+            let operation = match operation_name {
+                "addx" => Operation::Add(2),
+                _ => Operation::Noop(1),
             };
 
             Command {
-                direction: direction,
-                count: n,
+                operation: operation,
+                count: n
             }
         }).collect();
 
